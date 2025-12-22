@@ -4,9 +4,11 @@ import { Line } from "vue-chartjs";
 import ChartService from "../service/chartService";
 import { Chart, registerables } from "chart.js";
 import { useCoinsStore } from "../store/coinsStore";
+import { watch } from "vue";
 Chart.register(...registerables);
 
 const coinsStore = useCoinsStore();
+
 
 const topCoins = computed(() => {
   return [...coinsStore.coinDataTop50]
@@ -53,9 +55,9 @@ const fetchChartData = async () => {
   for (const coin of topCoins.value) {
     try {
       const response = await ChartService.getChart(coin.id, selectedCoinData.value);
-
       const chartArray = response.data?.data;
-
+      console.log(response)
+      //console.log(chartArray)
       if (chartArray && chartArray.length > 0) {
         const prices = chartArray.map((entry) => ({
           date: new Date(entry.date).toLocaleTimeString(),
@@ -74,6 +76,8 @@ const fetchChartData = async () => {
               data: prices.map((entry) => entry.price),
             },
           ],
+          timestamp: new Date().toLocaleString() 
+          
         };
       } else {
         console.error(`There is no chartArray data for ${coin.id}`);
@@ -84,16 +88,31 @@ const fetchChartData = async () => {
   }
 };
 
-onMounted(() => {
-  topCoins.value.forEach((coin, index) => {
+// onMounted(() => {
+//   topCoins.value.forEach((coin, index) => {
+//     coinColors2.value[coin.id] = {
+//       backgroundColor: colors[index],
+//       borderColor: colors[index].replace("0.5", "1"),
+//     };
+//   });
+
+//   fetchChartData();
+// });
+watch(topCoins, (coins) => {
+  if (coins.length === 0) return;
+
+  // set colors for coins
+  coins.forEach((coin, index) => {
     coinColors2.value[coin.id] = {
       backgroundColor: colors[index],
       borderColor: colors[index].replace("0.5", "1"),
     };
   });
 
+  // fetch with intervals AFTER colors exist
   fetchChartData();
-});
+}, { immediate: true });
+
 
 function formatPrice(price) {
   if (price >= 1.01) return price.toFixed(2)
@@ -118,7 +137,14 @@ function formatPrice(price) {
     <h1 className="font-bold text-white w-full text-center mb-4 text-3xl">
       Today's most popular coins chart
     </h1>
-
+    <div>
+      <label>Choose timeline</label>
+      <select v-model="selectedCoinData" @change="fetchChartData">
+        <option value="1DAY">1 hour (1DAY)</option>
+        <option value="7DAY">1 week (7DAY)</option>
+        <option value="1MTH">1 month (1MTH)</option>
+      </select>
+    </div>
     <div v-for="coin in topCoins" :key="coin.id" className="w-[45%] mb-6">
       <h2 class="text-white font-bold text-center mb-2">{{ coin.symbol }} Price</h2>
       <Line
@@ -126,6 +152,10 @@ function formatPrice(price) {
         :data="chartData[coin.id]"
         :options="chartOptions"
       />
+      <p v-if="chartData[coin.id]?.timestamp" class="text-gray-400 text-center text-sm mt-1">
+        Updated: {{ chartData[coin.id].timestamp }}
+      </p>
+      
       <p v-else class="text-white text-center">
         Error fetching chart data for {{ coin.symbol }}
       </p>
