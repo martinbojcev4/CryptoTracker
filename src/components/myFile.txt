@@ -1,1 +1,109 @@
+<script setup>
 
+import { useCoinsStore } from "../store/coinsStore";
+import {ref,computed} from 'vue'
+
+const coinStore = useCoinsStore();
+const sortedBy = ref(null)
+
+const sortOrder = ref("desc");
+const searchQuery = ref("");
+
+
+const sortedCoins = computed(()=>{
+    let coins = [...coinStore.coinDataTop50];
+
+    // FIlter by name (substring, case-insensitive)
+    if(searchQuery.value) {
+        coins = coins.filter(coin => 
+            coin.name.toLowerCase().includes(searchQuery.value.toLowerCase())
+        );
+    }
+
+    if(sortedBy.value ==='change'){
+        coins.sort((a,b) => 
+            sortOrder.value === "asc"
+                ? a.changePercent24Hr - b.changePercent24Hr
+                : b.changePercent24Hr - a.changePercent24Hr
+     );
+    }
+    
+    if(sortedBy.value === 'volume'){
+        coins.sort((a,b) => 
+            sortOrder.value === "asc"
+                ? a.volumeUsd24Hr - b.volumeUsd24Hr
+                : b.volumeUsd24Hr - a.volumeUsd24Hr
+        );
+    }
+
+    return coins;
+
+
+});
+
+</script>
+<template>
+    <div class="bg-[#1B2028] w-full rounded-[10px] p-[20px] mt-[20px] mb-[15px] mx-auto max-w-7xl">
+        <h1 class="text-white font-bold text-3xl">Live Market</h1>
+        
+        <div>
+            <button @click="sortedBy=null" class="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600">
+                Return to normal
+            </button>
+            <button @click="sortedBy = 'change'" class="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600">
+                Sort by Change %
+            </button>
+            <button @click="sortedBy = 'volume' " class="px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600">
+                Sort by Volume 24h
+            </button>
+
+        </div>
+
+        <div>
+            <select
+                v-model="sortOrder"
+                class="px-4 py-2 rounded bg-gray-700 text-white ml-2"
+                >
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+            </select>
+            <input v-model="searchQuery"
+                    type="text"
+                    placeholder="Search coin..."
+                    class="px-4 py-2 rounded bg-gray-700 text-white ml-2"
+                    />
+        </div>
+        <div>
+            <p class="text-gray-400 mt-2">
+                {{ sortedCoins.length }} of {{ coinStore.coinDataTop50.length }} coins are showing
+            </p>
+        </div>
+        
+        <div class="grid grid-cols-5 gap-4 mt-[20px] text-gray-400">
+            <p>Coin</p>
+            <p>Change</p>
+            <p>Market Cap</p>
+            <p>24h Volume</p>
+            <p>Price</p>
+        </div>
+        <div class="max-h-[400px] overflow-y-scroll">
+          <div v-for="coin in sortedCoins" :key="coin.id" class="grid grid-cols-5 gap-4 mt-[20px] text-gray-300">
+            <p>{{ coin.name }}</p>
+            <p  :class="(coin.changePercent24Hr) < 0 ? 'font-bold text-red-500' : 'font-bold text-[#1ECB4F]'">{{ Number(coin.changePercent24Hr).toFixed(2)}}%</p>
+            <p>${{ Number(coin.marketCapUsd).toFixed(0) }}M</p>
+            <p>${{ Number(coin.volumeUsd24Hr).toFixed(0)}}M</p>
+            <p>${{ Number(coin.priceUsd).toFixed(4) }}</p>
+        </div>
+        </div>
+
+        <div>
+
+        </div>
+    </div>
+</template>
+
+<style scoped>
+button {
+    margin: 10px;
+}
+</style>
